@@ -1,2 +1,15 @@
 Assets/Backup.unity
 Assets/Backup.unity.meta
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[叠]uild/
+/[叠]uilds/
+/[尝]ogs/
+/[𠠪]emoryCaptures/
+/[𠠪]serSettings/
+*.csproj
+*.sln
+*.slnx
+*.suo
+

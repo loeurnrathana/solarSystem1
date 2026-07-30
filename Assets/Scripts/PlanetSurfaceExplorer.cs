@@ -839,11 +839,17 @@ namespace SolarSystemScope
 
         private static Shader GetSurfaceShader()
         {
-            Shader s = Shader.Find("Universal Render Pipeline/Lit");
-            if (s == null) s = Shader.Find("Universal Render Pipeline/Unlit");
+            Shader s = null;
+            if (UnityEngine.Rendering.GraphicsSettings.currentRenderPipeline != null)
+            {
+                s = Shader.Find("Universal Render Pipeline/Lit");
+                if (s == null) s = Shader.Find("Universal Render Pipeline/Unlit");
+            }
             if (s == null) s = Shader.Find("Unlit/Texture");
+            if (s == null) s = Shader.Find("Unlit/Color");
             if (s == null) s = Shader.Find("Standard");
             if (s == null) s = Shader.Find("Sprites/Default");
+            if (s == null) s = Shader.Find("Universal Render Pipeline/Lit");
             return s;
         }
 
@@ -857,10 +863,10 @@ namespace SolarSystemScope
 
             if (tex != null)
             {
-                try { mat.mainTexture = tex; } catch {}
                 if (mat.HasProperty("_BaseMap")) mat.SetTexture("_BaseMap", tex);
                 if (mat.HasProperty("_MainTex")) mat.SetTexture("_MainTex", tex);
-                mat.mainTextureScale = new Vector2(tile, tile);
+                try { mat.mainTexture = tex; } catch {}
+                try { mat.mainTextureScale = new Vector2(tile, tile); } catch {}
             }
         }
 
@@ -1566,9 +1572,9 @@ namespace SolarSystemScope
             // 6.6 Spawn Alien UFO Flying Saucer
             CreateSpaceship(surfaceRoot.transform, body.bodyName);
 
-            // 7. Create NASA Telemetry Surface HUD UI
+            // 7. Create NASA Telemetry Surface HUD UI (Disabled)
             currentTelemetryStr = nasaTelemetryStr;
-            BuildSurfaceHUD(body, nasaTelemetryStr);
+            // BuildSurfaceHUD(body, nasaTelemetryStr);
         }
 
         public static float GetTerrainHeight(float posX, float posZ, string planetName)
