@@ -3,13 +3,18 @@ Assets/Backup.unity.meta
 /[Ll]ibrary/
 /[Tt]emp/
 /[Oo]bj/
-/[叠]uild/
-/[叠]uilds/
-/[尝]ogs/
-/[𠠪]emoryCaptures/
-/[𠠪]serSettings/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Mm]emoryCaptures/
+/[Uu]serSettings/
 *.csproj
 *.sln
 *.slnx
 *.suo
+*.user
+*.userprefs
+.vs/
+.DS_Store
+Thumbs.db
 
