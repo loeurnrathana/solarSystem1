@@ -4,14 +4,8 @@ using UnityEditor.SceneManagement;
 
 namespace SolarSystemScope
 {
-    [InitializeOnLoad]
     public class SolarSystemMenu
     {
-        static SolarSystemMenu()
-        {
-            EditorApplication.delayCall += CleanSceneInEditor;
-        }
-
         [MenuItem("Solar System/Clean & Build 3D Solar System Scene", false, 1)]
         public static void CleanSceneInEditor()
         {

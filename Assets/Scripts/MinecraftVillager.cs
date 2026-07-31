@@ -42,20 +42,187 @@ namespace SolarSystemScope
         private float currentOrbitAngle = 0f;
         private float walkCycleAngle = 0f;
 
-        private static readonly string[] VillagerQuotes = new string[]
+        private static readonly Dictionary<string, string[]> PlanetFacts = new Dictionary<string, string[]>()
         {
-            "Hrrrrm! (Trade: 1 Emerald = 1 Earth)",
-            "Hrmm... Is Mars made of Redstone?",
-            "Hrrr! The Sun is shining 7 times brighter!",
-            "Hrmm... 64 Emeralds for a Rocket!",
-            "Hrrrrm! Beautiful Solar System!",
-            "Hrmm? Where is the Village?",
-            "Hrrr! Saturn's rings are made of ice!"
+            { "Jupiter", new string[] {
+                "Believe me, Jupiter is huge! It is a gas giant 318 times the mass of Earth, tremendous planet!",
+                "Jupiter rotates super fast, 9.9 hours for a day, nobody does fast days like Jupiter, nobody!",
+                "The Great Red Spot is a giant storm, bigger than Earth! It has been raging for centuries, incredible!",
+                "Jupiter acts as a cosmic shield, using its massive gravity to protect us from comets, fantastic job!",
+                "Jupiter has 95 confirmed moons, including volcanic Io and icy Europa, big league moons!"
+            }},
+            { "Saturn", new string[] {
+                "Saturn has the most beautiful rings you have ever seen, billions of pieces of ice and rock, spectacular!",
+                "Saturn's density is so low, it would float in water! Believe me, it floats, total winner!",
+                "A day on Saturn is 10.7 hours and its year is 29.5 Earth years, long fantastic year!",
+                "Saturn has 274 moons — the most in the entire solar system! Nobody has more moons than Saturn!",
+                "Titan has liquid methane lakes and Enceladus has water geysers shooting into space, unbelievable!"
+            }},
+            { "Venus", new string[] {
+                "Venus is the hottest planet in the solar system, 465 degrees Celsius! Nobody handles heat like Venus!",
+                "Venus is named after the goddess of beauty, the brightest natural object in the night sky after the Moon, gorgeous!",
+                "Venus rotates backwards! Its day is 243 Earth days long, longer than its year, incredible!",
+                "Venus has a 96% carbon dioxide atmosphere with sulfuric acid clouds, total runaway greenhouse effect!",
+                "Venus is Earth's twin in size, 12,104 kilometers wide, but has zero moons and 92 times Earth's pressure, tough planet!"
+            }},
+            { "Mercury", new string[] {
+                "Mercury is the closest to the Sun and the fastest planet! 88 days for a full year, very fast, very strong!",
+                "Mercury is named after the speedy messenger god, tremendous speed!",
+                "Mercury has extreme temperatures, 430 degrees in the day and minus 180 at night, huge temperature swings!",
+                "Mercury has an iron core that takes up 85% of its radius, massive iron core, tremendous structure!",
+                "Mercury rotates super slowly, one day lasts 59 Earth days, very slow spin!"
+            }},
+            { "Mars", new string[] {
+                "Mars is the Red Planet, covered in iron oxide, total rust! A fantastic world, very special!",
+                "Mars has a 24.6 hour day, almost identical to Earth's day, great timing!",
+                "Olympus Mons on Mars is the tallest volcano in the solar system — 3 times taller than Everest, huge!",
+                "Mars has two potato-shaped moons, Phobos and Deimos, captured asteroids, great moons!",
+                "Mars has a thin atmosphere and massive global dust storms that cover the entire planet, unbelievable!"
+            }},
+            { "Earth", new string[] {
+                "Welcome to Earth, the greatest planet! 70% ocean, 30% land, protected by a 5-layer atmosphere!",
+                "Earth has a mass of 5.97 times 10 to the 24th power kilograms, big heavy world!",
+                "Earth orbits 150 million kilometers from the Sun, with a 24-hour day and 365-day year, perfect balance!",
+                "Earth has liquid water and life — nobody does life better than Earth, believe me!"
+            }},
+            { "Uranus", new string[] {
+                "Uranus is an Ice Giant named after the Greek god of the sky, fantastic planet!",
+                "Uranus spins on a 97.8 degree tilt — it rolls around the Sun like a ball, very unique!",
+                "Uranus is 1.8 billion miles from the Sun with a 17-hour day and 84-year orbit, very far!",
+                "Uranus is the coldest planet in the solar system at minus 224 degrees, freezing cold!",
+                "Uranus has 28 moons named after Shakespeare and Pope, very educated moons!"
+            }},
+            { "Neptune", new string[] {
+                "Neptune is named after the god of the sea and is invisible to the naked eye, mysterious!",
+                "Neptune was discovered by math before anyone even saw it with a telescope, very smart!",
+                "Neptune has supersonic winds over 1,200 miles per hour — 9 times stronger than Earth's, powerful winds!",
+                "Neptune is 30 astronomical units away, with a 16-hour day and 165-year orbit, huge orbit!",
+                "Neptune has 16 moons! Its largest moon Triton circles backwards in a retrograde orbit, rogue moon!"
+            }},
+            { "Sun", new string[] {
+                "The Sun contains 99.86% of all the mass in the entire solar system — massive, powerful star!",
+                "The core of the Sun reaches an incredible 15 million degrees Celsius, extremely hot!",
+                "Sunlight takes 8 minutes and 20 seconds to reach Earth, fast light!"
+            }}
         };
+
+        private static readonly string[] GenericVillagerQuotes = new string[]
+        {
+            "Welcome to this amazing planet in our solar system, tremendous world!",
+            "Did you know? Nobody knows planetary science facts better than me, nobody!",
+            "Exploring space is one of humanity's greatest achievements, big league!",
+            "Look around at the landscape of this incredible planet, spectacular view!"
+        };
+
+        private int currentFactIndex = 0;
+        private AudioSource villagerAudioSource;
+        private AudioClip villagerHrmmClip;
 
         private void Awake()
         {
             Instance = this;
+        }
+
+        private void OnDestroy()
+        {
+            try
+            {
+                if (ttsWriter != null)
+                {
+                    ttsWriter.WriteLine("QUIT");
+                }
+                if (ttsServerProcess != null && !ttsServerProcess.HasExited)
+                {
+                    ttsServerProcess.Kill();
+                }
+            }
+            catch {}
+        }
+
+        private static System.Diagnostics.Process ttsServerProcess = null;
+        private static System.IO.StreamWriter ttsWriter = null;
+
+        private static void EnsureTtsEngineRunning()
+        {
+            if (ttsServerProcess != null && !ttsServerProcess.HasExited && ttsWriter != null)
+            {
+                return;
+            }
+
+            try
+            {
+                string psScript = 
+                    "$ErrorActionPreference = 'SilentlyContinue'; " +
+                    "Add-Type -AssemblyName System.Speech; " +
+                    "$s = New-Object System.Speech.Synthesis.SpeechSynthesizer; " +
+                    "$v = $s.GetInstalledVoices() | Where-Object { $_.VoiceInfo.Name -like '*David*' -or $_.VoiceInfo.Gender -eq 'Male' } | Select-Object -First 1; " +
+                    "if ($v) { $s.SelectVoice($v.VoiceInfo.Name) }; " +
+                    "$s.Rate = 1; " +
+                    "$s.Volume = 100; " +
+                    "while ($true) { " +
+                    "   $line = [Console]::In.ReadLine(); " +
+                    "   if ([string]::IsNullOrEmpty($line) -or $line -eq 'QUIT') { break }; " +
+                    "   $s.SpeakAsyncCancelAll(); " +
+                    "   $s.SpeakAsync($line) | Out-Null; " +
+                    "}";
+
+                System.Diagnostics.ProcessStartInfo psi = new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "powershell.exe",
+                    Arguments = $"-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -Command \"{psScript}\"",
+                    CreateNoWindow = true,
+                    UseShellExecute = false,
+                    RedirectStandardInput = true,
+                    WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden
+                };
+
+                ttsServerProcess = System.Diagnostics.Process.Start(psi);
+                if (ttsServerProcess != null)
+                {
+                    ttsWriter = ttsServerProcess.StandardInput;
+                    ttsWriter.AutoFlush = true;
+                }
+            }
+            catch (System.Exception ex)
+            {
+                UnityEngine.Debug.LogError($"[TTS Engine Start Error] {ex.Message}");
+            }
+        }
+
+        public void SpeakTextOutLoud(string textToSpeak)
+        {
+            if (string.IsNullOrEmpty(textToSpeak)) return;
+
+            string spokenText = textToSpeak
+                .Replace("—", ",")
+                .Replace("°C", " degrees Celsius")
+                .Replace("°F", " degrees Fahrenheit")
+                .Replace("AU", " astronomical units")
+                .Replace("km/h", " kilometers per hour")
+                .Replace("mph", " miles per hour")
+                .Replace("CO2", " carbon dioxide")
+                .Replace("318x", " 318 times ")
+                .Replace("95x", " 95 times ")
+                .Replace("3x", " 3 times ");
+
+            System.Threading.Thread ttsThread = new System.Threading.Thread(() =>
+            {
+                try
+                {
+                    EnsureTtsEngineRunning();
+                    if (ttsWriter != null)
+                    {
+                        string cleanLine = spokenText.Replace("\r", " ").Replace("\n", " ").Trim();
+                        ttsWriter.WriteLine(cleanLine);
+                    }
+                }
+                catch (System.Exception ex)
+                {
+                    UnityEngine.Debug.LogError($"[TTS Speak Error] {ex.Message}");
+                }
+            });
+            ttsThread.IsBackground = true;
+            ttsThread.Start();
         }
 
         private bool isSurfaceVillager = false;
@@ -63,9 +230,47 @@ namespace SolarSystemScope
         private void Start()
         {
             BuildMinecraftVillagerModel();
+            SetupVillagerAudio();
             if (!isSurfaceVillager)
             {
                 SetVisible(false); // Start hidden in space mode
+            }
+        }
+
+        private void SetupVillagerAudio()
+        {
+            villagerAudioSource = gameObject.AddComponent<AudioSource>();
+            villagerAudioSource.spatialBlend = 0.5f;
+            villagerAudioSource.playOnAwake = false;
+            villagerAudioSource.minDistance = 2f;
+            villagerAudioSource.maxDistance = 40f;
+
+            int sampleRate = 44100;
+            float duration = 0.45f;
+            int sampleCount = Mathf.RoundToInt(sampleRate * duration);
+            float[] samples = new float[sampleCount];
+
+            for (int i = 0; i < sampleCount; i++)
+            {
+                float t = (float)i / sampleRate;
+                float env = Mathf.Sin(t / duration * Mathf.PI);
+                float freq = Mathf.Lerp(220f, 290f, Mathf.Sin(t / duration * Mathf.PI));
+                float voiceWave = Mathf.Sin(2f * Mathf.PI * freq * t) * 0.6f 
+                                + Mathf.Sin(4f * Mathf.PI * freq * t) * 0.25f 
+                                + Mathf.Sin(6f * Mathf.PI * freq * t) * 0.15f;
+                samples[i] = voiceWave * env * 0.5f;
+            }
+
+            villagerHrmmClip = AudioClip.Create("HumanSpeechVoice", sampleCount, 1, sampleRate, false);
+            villagerHrmmClip.SetData(samples, 0);
+        }
+
+        private void PlayVillagerSound()
+        {
+            if (villagerAudioSource != null && villagerHrmmClip != null)
+            {
+                villagerAudioSource.pitch = Random.Range(0.88f, 1.08f);
+                villagerAudioSource.PlayOneShot(villagerHrmmClip);
             }
         }
 
@@ -115,6 +320,7 @@ namespace SolarSystemScope
             villagerRoot.transform.SetParent(transform, false);
             villagerRoot.transform.localPosition = Vector3.zero;
             villagerRoot.transform.localRotation = Quaternion.identity;
+            villagerRoot.transform.localScale = Vector3.one; // Normal Villager Model Scale
 
             // Exact Colors from 1st Reference Image
             Color mcSkinUpper = new Color(0.72f, 0.49f, 0.36f);   // #B77D5C Upper Head Tan
@@ -458,7 +664,7 @@ namespace SolarSystemScope
             transform.position = currentPos;
 
             // First Person Click Interaction (Looking directly at Villager & Left Click)
-            if (Input.GetMouseButtonDown(0))
+            if (IsLeftClickPressed())
             {
                 Camera cam = Camera.main ?? Camera.current;
                 if (cam != null)
@@ -507,43 +713,140 @@ namespace SolarSystemScope
                 rightLegTransform.localRotation = Quaternion.Euler(-legAngle, 0f, 0f);
             }
 
-            // Speech Bubble Timer
-            if (speechTimer > 0f)
+            // Left Click Raycast Detection (Works in both Locked FPS & Free Cursor modes, compatible with New Input System)
+            if (IsLeftClickPressed())
             {
-                speechTimer -= Time.deltaTime;
+                Camera cam = Camera.main ?? Camera.current;
+                if (cam != null)
+                {
+                    Ray ray = (Cursor.lockState == CursorLockMode.Locked) 
+                        ? cam.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f)) 
+                        : cam.ScreenPointToRay(GetMousePositionSafe());
+
+                    if (Physics.Raycast(ray, out RaycastHit hit, 15.0f))
+                    {
+                        if (hit.transform == transform || hit.transform.IsChildOf(transform))
+                        {
+                            InteractWithVillager();
+                        }
+                    }
+                }
             }
         }
 
-        private void OnMouseDown()
+        private bool IsLeftClickPressed()
         {
-            InteractWithVillager();
+            try
+            {
+                if (Input.GetMouseButtonDown(0)) return true;
+            }
+            catch {}
+#if ENABLE_INPUT_SYSTEM
+            try
+            {
+                if (UnityEngine.InputSystem.Mouse.current != null && UnityEngine.InputSystem.Mouse.current.leftButton.wasPressedThisFrame)
+                    return true;
+            }
+            catch {}
+#endif
+            return false;
         }
+
+        private Vector3 GetMousePositionSafe()
+        {
+            try
+            {
+                return Input.mousePosition;
+            }
+            catch {}
+#if ENABLE_INPUT_SYSTEM
+            try
+            {
+                if (UnityEngine.InputSystem.Mouse.current != null)
+                {
+                    Vector2 pos = UnityEngine.InputSystem.Mouse.current.position.ReadValue();
+                    return new Vector3(pos.x, pos.y, 0f);
+                }
+            }
+            catch {}
+#endif
+            return Vector3.zero;
+        }
+
+        private float lastInteractTime = 0f;
 
         public void InteractWithVillager()
         {
-            string randomQuote = VillagerQuotes[Random.Range(0, VillagerQuotes.Length)];
-            ShowSpeechBubble(randomQuote);
+            // Debounce: speak EXACTLY ONE TIME per click
+            if (Time.time - lastInteractTime < 0.4f) return;
+            lastInteractTime = Time.time;
+
+            string planetName = "";
+            if (PlanetSurfaceExplorer.Instance != null && !string.IsNullOrEmpty(PlanetSurfaceExplorer.Instance.CurrentPlanetName))
+            {
+                planetName = PlanetSurfaceExplorer.Instance.CurrentPlanetName;
+            }
+            else if (targetBody != null)
+            {
+                planetName = targetBody.name;
+            }
+
+            string fact = GetPlanetFact(planetName);
+            ShowSpeechBubble(fact, 6.0f);
             SpawnEmeraldParticleEffect();
-            Debug.Log("<color=green>[Minecraft Villager] HRRRRM!</color>");
+            PlayVillagerSound();
+            SpeakTextOutLoud(fact);
+            Debug.Log($"<color=green>[Explorer Guide] Speaking aloud about {planetName}: {fact}</color>");
         }
 
-        public void ShowSpeechBubble(string text, float duration = 4.5f)
+        private string GetPlanetFact(string planetName)
+        {
+            if (!string.IsNullOrEmpty(planetName) && PlanetFacts.ContainsKey(planetName))
+            {
+                string[] facts = PlanetFacts[planetName];
+                string fact = facts[currentFactIndex % facts.Length];
+                currentFactIndex++;
+                return fact;
+            }
+            return GenericVillagerQuotes[Random.Range(0, GenericVillagerQuotes.Length)];
+        }
+
+        public void ShowSpeechBubble(string text, float duration = 99999f)
         {
             currentSpeech = text;
-            speechTimer = duration;
+            speechTimer = 99999f;
         }
 
         private void SpawnEmeraldParticleEffect()
         {
             GameObject fxObj = new GameObject("EmeraldBurstFX");
+            fxObj.transform.SetParent(transform, true);
             fxObj.transform.position = transform.position + Vector3.up * 2.0f;
 
             ParticleSystem ps = fxObj.AddComponent<ParticleSystem>();
+            ParticleSystemRenderer psr = fxObj.GetComponent<ParticleSystemRenderer>();
+            if (psr != null)
+            {
+                Shader pShader = Shader.Find("Universal Render Pipeline/Particles/Unlit")
+                              ?? Shader.Find("Particles/Standard Unlit")
+                              ?? Shader.Find("Sprites/Default")
+                              ?? Shader.Find("Unlit/Color");
+                if (pShader != null)
+                {
+                    Material pMat = new Material(pShader);
+                    Color emeraldCol = new Color(0.1f, 0.95f, 0.35f, 0.95f);
+                    if (pMat.HasProperty("_BaseColor")) pMat.SetColor("_BaseColor", emeraldCol);
+                    if (pMat.HasProperty("_Color")) pMat.SetColor("_Color", emeraldCol);
+                    if (pMat.HasProperty("_TintColor")) pMat.SetColor("_TintColor", emeraldCol);
+                    psr.material = pMat;
+                }
+            }
+
             var main = ps.main;
             main.startLifetime = 1.2f;
             main.startSpeed = 3.5f;
             main.startSize = 0.35f;
-            main.startColor = new Color(0.1f, 0.9f, 0.3f);
+            main.startColor = new Color(0.1f, 0.95f, 0.35f, 1.0f);
             main.maxParticles = 40;
 
             var emit = ps.emission;
@@ -555,7 +858,7 @@ namespace SolarSystemScope
 
         private void OnGUI()
         {
-            if (speechTimer <= 0f || string.IsNullOrEmpty(currentSpeech) || villagerRoot == null || !villagerRoot.activeSelf) return;
+            if (string.IsNullOrEmpty(currentSpeech) || villagerRoot == null || !villagerRoot.activeSelf) return;
             
             Camera cam = Camera.main ?? Camera.current;
 #pragma warning disable 0618
@@ -563,37 +866,41 @@ namespace SolarSystemScope
 #pragma warning restore 0618
             if (cam == null) return;
 
-            Vector3 worldPos = transform.position + Vector3.up * 2.4f;
+            Vector3 worldPos = transform.position + Vector3.up * 2.5f;
             Vector3 screenPos = cam.WorldToScreenPoint(worldPos);
 
             if (screenPos.z > 0.1f)
             {
+                // Dynamic resolution scale factor (scales up for 1080p, 1440p, 4K UHD)
+                float resScale = Mathf.Clamp(Screen.height / 720f, 1.2f, 5.0f);
+
                 if (speechStyle == null || speechBgTex == null)
                 {
                     speechBgTex = new Texture2D(1, 1);
-                    speechBgTex.SetPixel(0, 0, new Color(0.06f, 0.12f, 0.08f, 0.92f)); // Emerald dark tint
+                    speechBgTex.SetPixel(0, 0, new Color(0.04f, 0.14f, 0.07f, 0.95f)); // Emerald dark tint
                     speechBgTex.Apply();
 
                     speechBoxStyle = new GUIStyle();
                     speechBoxStyle.normal.background = speechBgTex;
 
                     speechStyle = new GUIStyle();
-                    speechStyle.fontSize = 20;
                     speechStyle.fontStyle = FontStyle.Bold;
-                    speechStyle.normal.textColor = new Color(0.3f, 1.0f, 0.4f); // Emerald Green Text
+                    speechStyle.normal.textColor = new Color(0.35f, 1.0f, 0.45f); // Emerald Green Text
                     speechStyle.alignment = TextAnchor.MiddleCenter;
                     speechStyle.wordWrap = true;
                 }
 
+                speechStyle.fontSize = Mathf.RoundToInt(34f * resScale);
+
                 float guiX = screenPos.x;
                 float guiY = Screen.height - screenPos.y;
 
-                float boxW = 380f;
-                float boxH = 65f;
+                float boxW = Mathf.Min(820f * resScale, Screen.width * 0.92f);
+                float boxH = 150f * resScale;
                 Rect boxRect = new Rect(guiX - (boxW * 0.5f), guiY - boxH, boxW, boxH);
 
                 GUI.Box(boxRect, "", speechBoxStyle);
-                GUI.Label(new Rect(boxRect.x + 10f, boxRect.y + 8f, boxRect.width - 20f, boxRect.height - 16f), currentSpeech, speechStyle);
+                GUI.Label(new Rect(boxRect.x + (20f * resScale), boxRect.y + (12f * resScale), boxRect.width - (40f * resScale), boxRect.height - (24f * resScale)), currentSpeech, speechStyle);
             }
         }
 
