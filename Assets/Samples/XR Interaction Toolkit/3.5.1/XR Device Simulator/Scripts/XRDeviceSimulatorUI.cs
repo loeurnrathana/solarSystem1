@@ -782,26 +782,29 @@ namespace UnityEngine.XR.Interaction.Toolkit.Samples.DeviceSimulator
         /// </summary>
         void OnActivateHeadsetDevice(bool activated = true)
         {
+            if (this == null || m_Simulator == null) return;
             m_LeftController.SetAsActiveController(false, m_Simulator);
             m_RightController.SetAsActiveController(false, m_Simulator);
 
             m_LeftHand.SetActive(false, m_Simulator);
             m_RightHand.SetActive(false, m_Simulator);
 
-            m_CurrentSelectedDeviceText.text = activated ? "Head Mounted Display (HMD)" : "None";
-            m_HeadsetImage.gameObject.SetActive(activated);
+            if (m_CurrentSelectedDeviceText != null)
+                m_CurrentSelectedDeviceText.text = activated ? "Head Mounted Display (HMD)" : "None";
+            if (m_HeadsetImage != null && m_HeadsetImage.gameObject != null)
+                m_HeadsetImage.gameObject.SetActive(activated);
 
             HeadDeviceSetActive(activated);
 
             if (m_Simulator.manipulatingFPS)
             {
-                ControllersSetActive(false, m_DeviceLifecycleManager.deviceMode == SimulatedDeviceLifecycleManager.DeviceMode.Controller);
-                HandsSetActive(false, m_DeviceLifecycleManager.deviceMode == SimulatedDeviceLifecycleManager.DeviceMode.Hand);
+                ControllersSetActive(false, m_DeviceLifecycleManager != null && m_DeviceLifecycleManager.deviceMode == SimulatedDeviceLifecycleManager.DeviceMode.Controller);
+                HandsSetActive(false, m_DeviceLifecycleManager != null && m_DeviceLifecycleManager.deviceMode == SimulatedDeviceLifecycleManager.DeviceMode.Hand);
             }
             else
             {
-                HandsSetActive(false, Mathf.Approximately(m_HandsCanvasGroup.alpha, 1f));
-                ControllersSetActive(false, Mathf.Approximately(m_ControllersCanvasGroup.alpha, 1f));
+                HandsSetActive(false, m_HandsCanvasGroup != null && Mathf.Approximately(m_HandsCanvasGroup.alpha, 1f));
+                ControllersSetActive(false, m_ControllersCanvasGroup != null && Mathf.Approximately(m_ControllersCanvasGroup.alpha, 1f));
             }
         }
 
@@ -811,33 +814,41 @@ namespace UnityEngine.XR.Interaction.Toolkit.Samples.DeviceSimulator
         /// <param name="active">Whether the headset is the active device or not.</param>
         void HeadDeviceSetActive(bool active)
         {
-            m_HeadsetImage.gameObject.SetActive(active);
-            m_HeadsetSelectedButton.color = active ? selectedColor : buttonColor;
+            if (this == null) return;
+            if (m_HeadsetImage != null && m_HeadsetImage.gameObject != null)
+                m_HeadsetImage.gameObject.SetActive(active);
+            if (m_HeadsetSelectedButton != null)
+                m_HeadsetSelectedButton.color = active ? selectedColor : buttonColor;
 
             var currentColor = active ? enabledColor : disabledColor;
-            m_HeadsetMoveButtonIcon.color = currentColor;
-            m_HeadsetMoveButtonText.color = currentColor;
-            m_HeadsetMoveValueIcon.color = currentColor;
-            m_HeadsetMoveValueText.color = currentColor;
+            if (m_HeadsetMoveButtonIcon != null) m_HeadsetMoveButtonIcon.color = currentColor;
+            if (m_HeadsetMoveButtonText != null) m_HeadsetMoveButtonText.color = currentColor;
+            if (m_HeadsetMoveValueIcon != null) m_HeadsetMoveValueIcon.color = currentColor;
+            if (m_HeadsetMoveValueText != null) m_HeadsetMoveValueText.color = currentColor;
 
-            m_HeadsetMoveButton.color = active ? buttonColor : disabledButtonColor;
+            if (m_HeadsetMoveButton != null) m_HeadsetMoveButton.color = active ? buttonColor : disabledButtonColor;
         }
 
         void HandsSetActive(bool isActive, bool showCanvasGroup = false)
         {
-            m_HandsCanvasGroup.alpha = isActive || showCanvasGroup ? 1f : 0f;
+            if (this == null) return;
+            if (m_HandsCanvasGroup != null) m_HandsCanvasGroup.alpha = isActive || showCanvasGroup ? 1f : 0f;
 
+            if (m_HandsSelectedButton != null)
+            {
 #if XR_HANDS_1_1_OR_NEWER
-            m_HandsSelectedButton.color = isActive ? selectedColor : buttonColor;
+                m_HandsSelectedButton.color = isActive ? selectedColor : buttonColor;
 #else
-            m_HandsSelectedButton.color = disabledButtonColor;
+                m_HandsSelectedButton.color = disabledButtonColor;
 #endif
+            }
         }
 
         void ControllersSetActive(bool isActive, bool showCanvasGroup = false)
         {
-            m_ControllersCanvasGroup.alpha = isActive || showCanvasGroup ? 1f : 0f;
-            m_ControllerSelectedButton.color = isActive ? selectedColor : buttonColor;
+            if (this == null) return;
+            if (m_ControllersCanvasGroup != null) m_ControllersCanvasGroup.alpha = isActive || showCanvasGroup ? 1f : 0f;
+            if (m_ControllerSelectedButton != null) m_ControllerSelectedButton.color = isActive ? selectedColor : buttonColor;
         }
 
         static void Subscribe(InputActionReference reference, Action<InputAction.CallbackContext> performedOrCanceled)
@@ -862,6 +873,7 @@ namespace UnityEngine.XR.Interaction.Toolkit.Samples.DeviceSimulator
 
         void OnManipulateLeftAction(InputAction.CallbackContext context)
         {
+            if (this == null || m_Simulator == null) return;
             if (context.phase.IsInProgress())
             {
                 if (m_Simulator.manipulatingLeftDevice && m_Simulator.manipulatingRightDevice)
@@ -880,6 +892,7 @@ namespace UnityEngine.XR.Interaction.Toolkit.Samples.DeviceSimulator
 
         void OnManipulateRightAction(InputAction.CallbackContext context)
         {
+            if (this == null || m_Simulator == null) return;
             if (context.phase.IsInProgress())
             {
                 if (m_Simulator.manipulatingLeftDevice && m_Simulator.manipulatingRightDevice)
@@ -898,6 +911,7 @@ namespace UnityEngine.XR.Interaction.Toolkit.Samples.DeviceSimulator
 
         void OnToggleManipulateLeftAction(InputAction.CallbackContext context)
         {
+            if (this == null || m_Simulator == null) return;
             if (context.phase.IsInProgress())
             {
                 if (m_Simulator.manipulatingLeftDevice)
@@ -909,6 +923,7 @@ namespace UnityEngine.XR.Interaction.Toolkit.Samples.DeviceSimulator
 
         void OnToggleManipulateRightAction(InputAction.CallbackContext context)
         {
+            if (this == null || m_Simulator == null) return;
             if (context.phase.IsInProgress())
             {
                 if (m_Simulator.manipulatingRightDevice)
@@ -920,6 +935,7 @@ namespace UnityEngine.XR.Interaction.Toolkit.Samples.DeviceSimulator
 
         void OnToggleManipulateBodyAction(InputAction.CallbackContext context)
         {
+            if (this == null || m_Simulator == null) return;
             if (context.phase.IsInProgress())
             {
                 OnActivateHeadsetDevice();
@@ -928,6 +944,7 @@ namespace UnityEngine.XR.Interaction.Toolkit.Samples.DeviceSimulator
 
         void OnManipulateHeadAction(InputAction.CallbackContext context)
         {
+            if (this == null || m_Simulator == null) return;
             var isInProgress = context.phase.IsInProgress();
             var noDevices = !m_Simulator.manipulatingLeftDevice && !m_Simulator.manipulatingRightDevice;
             if (isInProgress)
@@ -940,11 +957,13 @@ namespace UnityEngine.XR.Interaction.Toolkit.Samples.DeviceSimulator
                 OnActivateHeadsetDevice(m_Simulator.manipulatingFPS);
             }
 
-            m_HeadsetLookButton.color = isInProgress ? selectedColor : buttonColor;
+            if (m_HeadsetLookButton != null)
+                m_HeadsetLookButton.color = isInProgress ? selectedColor : buttonColor;
         }
 
         void OnHandControllerModeAction(InputAction.CallbackContext context)
         {
+            if (this == null || m_Simulator == null) return;
 #if XR_HANDS_1_1_OR_NEWER
             if (context.phase.IsInProgress())
             {

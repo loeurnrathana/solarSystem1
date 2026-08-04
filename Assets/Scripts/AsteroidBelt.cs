@@ -9,9 +9,11 @@ namespace SolarSystemScope
         public float outerRadius = 74f;
         public float beltHeight = 3.5f;
 
+        private GameObject beltRoot;
+
         private void Start()
         {
-            GameObject beltRoot = new GameObject("AsteroidBeltRoot");
+            beltRoot = new GameObject("AsteroidBeltRoot");
             beltRoot.transform.SetParent(transform, false);
 
             Shader litShader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard") ?? Shader.Find("Mobile/Diffuse");
@@ -19,12 +21,6 @@ namespace SolarSystemScope
             asteroidMat.color = new Color(0.45f, 0.42f, 0.40f);
             if (asteroidMat.HasProperty("_BaseColor")) asteroidMat.SetColor("_BaseColor", new Color(0.45f, 0.42f, 0.40f));
             if (asteroidMat.HasProperty("_Color")) asteroidMat.SetColor("_Color", new Color(0.45f, 0.42f, 0.40f));
-
-            // Create Asteroid Belt Rotator
-            CelestialBody beltBody = beltRoot.AddComponent<CelestialBody>();
-            beltBody.bodyName = "Asteroid Belt";
-            beltBody.showOrbitLine = false;
-            beltBody.selfRotationSpeed = 1.8f;
 
             for (int i = 0; i < asteroidCount; i++)
             {
@@ -48,6 +44,14 @@ namespace SolarSystemScope
 
                 SafeDestroy(ast.GetComponent<Collider>());
                 ast.GetComponent<Renderer>().material = asteroidMat;
+            }
+        }
+
+        private void Update()
+        {
+            if (beltRoot != null)
+            {
+                beltRoot.transform.Rotate(Vector3.up, 1.8f * Time.deltaTime, Space.Self);
             }
         }
 

@@ -43,28 +43,31 @@ namespace UnityEngine.XR.Interaction.Toolkit.Samples.DeviceSimulator
 
             public void UpdateButtonVisuals(bool active, XRDeviceSimulatorUI uiManager)
             {
+                if (uiManager == null) return;
                 UpdateButtonActive(active);
 
                 Color color = active ? uiManager.enabledColor : uiManager.disabledColor;
-                m_BindText.color = color;
-                m_TitleText.color = color;
-                m_Icon.color = color;
-
-                m_Icon.transform.localScale = Vector3.one;
-                m_Icon.sprite = uiManager.GetInputIcon(m_Action?.controls[0]);
-                m_Icon.enabled = m_Icon.sprite != null;
+                if (m_BindText != null) m_BindText.color = color;
+                if (m_TitleText != null) m_TitleText.color = color;
+                if (m_Icon != null)
+                {
+                    m_Icon.color = color;
+                    m_Icon.transform.localScale = Vector3.one;
+                    m_Icon.sprite = uiManager.GetInputIcon(m_Action?.controls[0]);
+                    m_Icon.enabled = m_Icon.sprite != null;
+                }
             }
 
             public void SetButtonColor(Color color)
             {
-                m_ButtonImage.color = color;
+                if (m_ButtonImage != null) m_ButtonImage.color = color;
             }
 
             public void UpdateButtonActive(bool active)
             {
-                m_BindText.gameObject.SetActive(active);
-                m_TitleText.gameObject.SetActive(active);
-                m_Icon.gameObject.SetActive(active);
+                if (m_BindText != null && m_BindText.gameObject != null) m_BindText.gameObject.SetActive(active);
+                if (m_TitleText != null && m_TitleText.gameObject != null) m_TitleText.gameObject.SetActive(active);
+                if (m_Icon != null && m_Icon.gameObject != null) m_Icon.gameObject.SetActive(active);
             }
         }
 
@@ -132,20 +135,28 @@ namespace UnityEngine.XR.Interaction.Toolkit.Samples.DeviceSimulator
 
         internal void SetActive(bool active, XRDeviceSimulator simulator)
         {
+            if (this == null || m_MainUIManager == null) return;
+
             foreach (var expression in m_Expressions)
             {
-                expression.UpdateButtonVisuals(active, m_MainUIManager);
+                if (expression != null)
+                {
+                    expression.UpdateButtonVisuals(active, m_MainUIManager);
+                }
             }
 
             if (active)
             {
                 foreach (var expression in m_Expressions)
                 {
-                    var isActiveExpression = m_ActiveExpression == expression;
-                    expression.SetButtonColor(isActiveExpression ? m_MainUIManager.selectedColor : m_MainUIManager.buttonColor);
+                    if (expression != null)
+                    {
+                        var isActiveExpression = m_ActiveExpression == expression;
+                        expression.SetButtonColor(isActiveExpression ? m_MainUIManager.selectedColor : m_MainUIManager.buttonColor);
+                    }
                 }
 
-                m_HandImage.color = m_MainUIManager.deviceColor;
+                if (m_HandImage != null) m_HandImage.color = m_MainUIManager.deviceColor;
             }
             else
             {

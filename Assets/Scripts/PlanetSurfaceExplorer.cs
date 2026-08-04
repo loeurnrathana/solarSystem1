@@ -91,9 +91,39 @@ namespace SolarSystemScope
             StartCoroutine(TransitionToSurfaceRoutine(body));
         }
 
-        public void ExitPlanetSurface()
+        public void ExitPlanetSurface(bool forceExit = false)
         {
             if (!isExploringSurface || isTransitioning) return;
+
+            if (!forceExit)
+            {
+                if (UFOQuizManager.Instance == null)
+                {
+                    GameObject qmObj = new GameObject("UFOQuizManager");
+                    qmObj.AddComponent<UFOQuizManager>();
+                }
+
+                if (UFOQuizManager.Instance != null)
+                {
+                    if (UFOQuizManager.Instance.IsPlanetQuizPassed(currentPlanetName))
+                    {
+                        if (!UFOQuizManager.Instance.IsQuizActive)
+                        {
+                            UFOQuizManager.Instance.ShowRevisitPrompt(currentPlanetName);
+                        }
+                        return;
+                    }
+                    else
+                    {
+                        if (!UFOQuizManager.Instance.IsQuizActive)
+                        {
+                            UFOQuizManager.Instance.StartQuiz(currentPlanetName);
+                        }
+                        return;
+                    }
+                }
+            }
+
             StartCoroutine(TransitionToOrbitRoutine());
         }
 
@@ -428,10 +458,38 @@ namespace SolarSystemScope
         {
             if (!isExploringSurface || isTransitioning) return;
 
+            // Ensure UFOQuizManager singleton exists
+            if (UFOQuizManager.Instance == null)
+            {
+                GameObject qmObj = new GameObject("UFOQuizManager");
+                qmObj.AddComponent<UFOQuizManager>();
+            }
+
+            // Pause movement & mouse look while taking UFO QCM quiz
+            if (UFOQuizManager.Instance != null && UFOQuizManager.Instance.IsQuizActive)
+            {
+                return;
+            }
+
+            // Press ESC key to auto return to solar system space orbit
             if (WasEscPressedThisFrame())
             {
-                ExitPlanetSurface();
+                ExitPlanetSurface(forceExit: true);
                 return;
+            }
+
+            // Check E key press when near UFO
+            if (playerObj != null && spaceshipObj != null)
+            {
+                Vector3 sPos = spaceshipObj.transform.position;
+                float hDist = Vector2.Distance(new Vector2(playerObj.transform.position.x, playerObj.transform.position.z), new Vector2(sPos.x, sPos.z));
+                float tDist = Vector3.Distance(playerObj.transform.position, sPos);
+
+                if ((hDist <= 55f || tDist <= 130f) && WasEKeyPressedThisFrame())
+                {
+                    ExitPlanetSurface(forceExit: false);
+                    return;
+                }
             }
 
             // Continuous UFO Rotation & Sky Cloud Drift
@@ -710,19 +768,21 @@ namespace SolarSystemScope
         {
             if (playerObj == null || spaceshipObj == null || hudTextComponent == null) return;
 
-            float distToShip = Vector3.Distance(playerObj.transform.position, spaceshipPosition);
+            Vector3 targetShipPos = (spaceshipObj != null) ? spaceshipObj.transform.position : spaceshipPosition;
+            float distToShip = Vector3.Distance(playerObj.transform.position, targetShipPos);
             string distStr = (distToShip >= 1000f) ? $"{distToShip / 1000f:F2} km" : $"{distToShip:F0} m";
 
             Vector2 playerXZ = new Vector2(playerObj.transform.position.x, playerObj.transform.position.z);
-            Vector2 shipXZ = new Vector2(spaceshipPosition.x, spaceshipPosition.z);
+            Vector2 shipXZ = new Vector2(targetShipPos.x, targetShipPos.z);
             float horizontalDistToShip = Vector2.Distance(playerXZ, shipXZ);
 
-            bool isNearSpaceship = horizontalDistToShip <= 25f || distToShip <= 90f;
+            bool isNearSpaceship = horizontalDistToShip <= 55f || distToShip <= 130f;
+            bool isPassed = (UFOQuizManager.Instance != null && UFOQuizManager.Instance.IsPlanetQuizPassed(currentPlanetName));
 
-            // ESC key always returns to orbit; E key requires player to be near the spaceship (<= 25m)
-            if (WasEscPressedThisFrame() || (isNearSpaceship && WasEKeyPressedThisFrame()))
+            // Pressing [E] key near spaceship triggers planet QCM quiz check / launch
+            if (isNearSpaceship && WasEKeyPressedThisFrame())
             {
-                ExitPlanetSurface();
+                ExitPlanetSurface(forceExit: false);
                 return;
             }
 
@@ -734,7 +794,17 @@ namespace SolarSystemScope
 
             string timeHUD = $"TIME: {hours:D2}:{minutes:D2} [{phaseStr}]";
             string walkStr = "WASD: Walk | Shift: Sprint | Space: Jump";
-            string shipInteractStr = isNearSpaceship ? "[E] Board Spaceship to Orbit" : $"Ship Target: {distStr} (ESC: Orbit)";
+            
+            string shipInteractStr;
+            if (isNearSpaceship)
+            {
+                shipInteractStr = isPassed ? "[E] UFO Options (Retake Quiz or Leave Planet) | [ESC] Solar System" : "[E] Take UFO QCM Security Quiz (5 Qs) to Unlock UFO Launch | [ESC] Solar System";
+            }
+            else
+            {
+                shipInteractStr = isPassed ? $"UFO Target: {distStr} (Go under UFO & Press [E] for Options | [ESC] Solar System)" : $"UFO Target: {distStr} (Go under UFO & Press [E] for QCM Quiz | [ESC] Auto Return)";
+            }
+
             hudTextComponent.text = $"{currentTelemetryStr}  ||  {timeHUD} (Auto Rise & Set Cycle | [T] Skip)  ||  {walkStr}  ||  {shipInteractStr}";
         }
 
@@ -1731,7 +1801,7 @@ namespace SolarSystemScope
             hudTextComponent.font = font;
             hudTextComponent.fontSize = 14;
             hudTextComponent.color = new Color(0.92f, 0.95f, 1.0f);
-            hudTextComponent.text = $"{telemetryStr}  ||  [CONTROLS] WASD: Walk | Shift: Sprint | Space: Jump | F: Mode | ESC: Orbit";
+            hudTextComponent.text = $"{telemetryStr}  ||  [CONTROLS] WASD: Walk | Shift: Sprint | Space: Jump | Near UFO [E]: QCM Quiz | ESC: Auto Return to Solar System";
 
             // Create Interactive [🚀 RETURN TO SOLAR SYSTEM] Button
             GameObject btnObj = new GameObject("ReturnToSolarSystemBtn");
@@ -2046,12 +2116,9 @@ namespace SolarSystemScope
         private bool WasEKeyPressedThisFrame()
         {
 #if ENABLE_INPUT_SYSTEM
-            return Keyboard.current != null && Keyboard.current.eKey.wasPressedThisFrame;
-#elif ENABLE_LEGACY_INPUT_MANAGER
-            try { return Input.GetKeyDown(KeyCode.E); } catch { return false; }
-#else
-            return false;
+            try { if (Keyboard.current != null && Keyboard.current.eKey.wasPressedThisFrame) return true; } catch {}
 #endif
+            try { return Input.GetKeyDown(KeyCode.E); } catch { return false; }
         }
 
 

@@ -52,20 +52,23 @@ namespace MarsExplorer
             float dt = Time.deltaTime;
 
             // 1. Primary texture flow offset
-            currentUvOffset.x += flowSpeedU * dt;
-            currentUvOffset.y += flowSpeedV * dt;
-
-            // Keep UV offsets within [0, 1] bounds to prevent floating point overflow
-            currentUvOffset.x %= 1.0f;
-            currentUvOffset.y %= 1.0f;
-
-            if (planetMaterial.HasProperty("_BaseMap"))
+            if (flowSpeedU != 0f || flowSpeedV != 0f)
             {
-                planetMaterial.SetTextureOffset("_BaseMap", currentUvOffset);
-            }
-            else if (planetMaterial.HasProperty("_MainTex"))
-            {
-                planetMaterial.SetTextureOffset("_MainTex", currentUvOffset);
+                currentUvOffset.x += flowSpeedU * dt;
+                currentUvOffset.y += flowSpeedV * dt;
+
+                // Keep UV offsets within [0, 1] bounds to prevent floating point overflow
+                currentUvOffset.x %= 1.0f;
+                currentUvOffset.y %= 1.0f;
+
+                if (planetMaterial.HasProperty("_BaseMap"))
+                {
+                    planetMaterial.SetTextureOffset("_BaseMap", currentUvOffset);
+                }
+                else if (planetMaterial.HasProperty("_MainTex"))
+                {
+                    planetMaterial.SetTextureOffset("_MainTex", currentUvOffset);
+                }
             }
 
             // 2. Dual Phase Swirl / Turbulence animation

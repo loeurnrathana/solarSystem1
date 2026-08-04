@@ -780,9 +780,9 @@ namespace SolarSystemScope
                             sapiType.InvokeMember("Speak", System.Reflection.BindingFlags.InvokeMethod, null, voice, new object[] { textToSpeak, 1 });
                         }
                     }
-                    catch (System.Exception ex)
+                    catch
                     {
-                        Debug.LogWarning("Windows Speech TTS: " + ex.Message);
+                        // Fall back to built-in procedural speech synthesizer
                     }
                 });
             }

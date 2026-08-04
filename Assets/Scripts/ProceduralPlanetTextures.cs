@@ -8,11 +8,12 @@ namespace SolarSystemScope
         {
             tex.filterMode = FilterMode.Trilinear;
             tex.anisoLevel = 16;
-            tex.wrapMode = TextureWrapMode.Clamp;
+            tex.wrapModeU = TextureWrapMode.Repeat;
+            tex.wrapModeV = TextureWrapMode.Clamp;
             tex.Apply(true, false);
         }
 
-        public static Texture2D CreateMilkyWaySkyboxTexture(int width = 2048, int height = 1024)
+        public static Texture2D CreateMilkyWaySkyboxTexture(int width = 4096, int height = 2048)
         {
             Texture2D tex = new Texture2D(width, height, TextureFormat.RGBA32, true);
             Color[] colors = new Color[width * height];
@@ -72,7 +73,7 @@ namespace SolarSystemScope
             return tex;
         }
 
-        public static Texture2D CreateSunTexture(int width = 2048, int height = 1024)
+        public static Texture2D CreateSunTexture(int width = 4096, int height = 2048)
         {
             Texture2D tex = new Texture2D(width, height, TextureFormat.RGBA32, true);
             Color[] colors = new Color[width * height];
@@ -153,7 +154,7 @@ namespace SolarSystemScope
             return tex;
         }
 
-        public static Texture2D CreateMercuryTexture(int width = 2048, int height = 1024)
+        public static Texture2D CreateMercuryTexture(int width = 4096, int height = 2048)
         {
             Texture2D tex = new Texture2D(width, height, TextureFormat.RGBA32, true);
             Color[] colors = new Color[width * height];
@@ -174,20 +175,19 @@ namespace SolarSystemScope
                     // High-contrast crater ray pattern (Debussy & Caloris basin rays)
                     float craters = Mathf.Pow(Mathf.PerlinNoise(u * 55f + 10f, v * 55f + 14f), 3.8f) * 0.50f;
 
-                    // Color palette matching NASA Messenger false-color photograph
-                    Color deepIndigoBasalt = new Color(0.10f, 0.22f, 0.55f);     // Deep indigo mineral lowlands
-                    Color cobaltBluePlains = new Color(0.22f, 0.45f, 0.88f);     // Iridescent cobalt blue plains
-                    Color goldenAmberHighland = new Color(0.85f, 0.68f, 0.40f);  // Golden-amber highland rim terrain
-                    Color rayedWhiteCrater = new Color(0.96f, 0.98f, 0.72f);    // Bright white/yellow impact crater rays
+                    // Natural cratered regolith palette (Matching NASA Messenger natural-color photo)
+                    Color darkBasaltLowland = new Color(0.32f, 0.30f, 0.28f);     // Dark grey basaltic crater basins
+                    Color regolithHighland = new Color(0.55f, 0.52f, 0.48f);      // Medium silver-grey highland terrain
+                    Color rayedCraterEjecta = new Color(0.85f, 0.82f, 0.78f);     // Bright white/grey impact crater rays
 
-                    Color c = Color.Lerp(deepIndigoBasalt, cobaltBluePlains, val * 1.2f);
+                    Color c = Color.Lerp(darkBasaltLowland, regolithHighland, val * 1.2f);
                     if (val > 0.52f)
                     {
-                        c = Color.Lerp(c, goldenAmberHighland, (val - 0.52f) * 2.2f);
+                        c = Color.Lerp(c, regolithHighland, (val - 0.52f) * 2.2f);
                     }
                     if (craters > 0.18f)
                     {
-                        c = Color.Lerp(c, rayedWhiteCrater, (craters - 0.18f) * 3.8f);
+                        c = Color.Lerp(c, rayedCraterEjecta, (craters - 0.18f) * 3.8f);
                     }
 
                     colors[y * width + x] = c;
@@ -198,7 +198,7 @@ namespace SolarSystemScope
             return tex;
         }
 
-        public static Texture2D CreateVenusTexture(int width = 2048, int height = 1024)
+        public static Texture2D CreateVenusTexture(int width = 4096, int height = 2048)
         {
             Texture2D tex = new Texture2D(width, height, TextureFormat.RGBA32, true);
             Color[] colors = new Color[width * height];
@@ -215,9 +215,9 @@ namespace SolarSystemScope
                     float n2 = Mathf.PerlinNoise(u * 16f, v * 16f) * 0.30f;
                     float val = Mathf.Clamp01(n1 + n2);
 
-                    Color deepAmberCloud = new Color(0.82f, 0.62f, 0.34f);
-                    Color lightCreamCloud = new Color(0.96f, 0.88f, 0.68f);
-                    Color brightSulfuricWhite = new Color(0.98f, 0.94f, 0.80f);
+                    Color deepAmberCloud = new Color(0.88f, 0.84f, 0.76f); // Pale cream ivory
+                    Color lightCreamCloud = new Color(0.95f, 0.92f, 0.86f); // Light cream
+                    Color brightSulfuricWhite = new Color(0.98f, 0.96f, 0.92f); // Pure white cloud tops
 
                     Color c = Color.Lerp(deepAmberCloud, lightCreamCloud, val);
                     if (val > 0.60f)
@@ -232,70 +232,78 @@ namespace SolarSystemScope
             return tex;
         }
 
-        public static Texture2D CreateEarthTexture(int width = 2048, int height = 1024)
+        public static Texture2D CreateEarthTexture(int width = 4096, int height = 2048)
         {
             Texture2D tex = new Texture2D(width, height, TextureFormat.RGBA32, true);
             Color[] colors = new Color[width * height];
 
+            Color deepAbyssalOcean = new Color(0.02f, 0.16f, 0.45f);  // Deep abyssal ocean blue
+            Color shallowCoastalBlue = new Color(0.08f, 0.48f, 0.65f); // Caribbean shallow coastal shelf
+            Color lushRainforestGreen = new Color(0.10f, 0.42f, 0.16f);// Amazon & Congo rainforest green
+            Color temperateForestGreen = new Color(0.20f, 0.48f, 0.22f);// North American / Eurasian temperate forest
+            Color saharaGoldenDesert = new Color(0.82f, 0.70f, 0.42f);  // Sahara & Arabian golden sand desert
+            Color polarIceCap = new Color(0.96f, 0.98f, 1.0f);        // Arctic & Antarctic ice sheet
+            Color atmosphericCloud = new Color(0.98f, 0.99f, 1.0f);   // White swirling cyclone clouds
+
             for (int y = 0; y < height; y++)
             {
                 float v = (float)y / height;
-                float latitude = Mathf.Abs(v - 0.5f) * 2f;
-                bool isNorth = v > 0.48f;
+                float latitude = (v - 0.5f) * 2f; // [-1, 1]
+                float absLat = Mathf.Abs(latitude);
 
                 for (int x = 0; x < width; x++)
                 {
                     float u = (float)x / width;
                     
-                    // Realistic Earth continent geography (Africa, Eurasia, Americas, Australia)
-                    float n1 = Mathf.PerlinNoise(u * 3.6f + 1.2f, v * 3.6f + 0.8f);
-                    float n2 = Mathf.PerlinNoise(u * 8f + 5.5f, v * 8f + 3.2f) * 0.35f;
-                    float n3 = Mathf.PerlinNoise(u * 18f + 12f, v * 18f + 8f) * 0.15f;
+                    // Realistic Earth continent geography (Americas, Europe, Africa, Asia, Australia)
+                    float n1 = Mathf.PerlinNoise(u * 3.8f + 1.2f, v * 3.8f + 0.8f);
+                    float n2 = Mathf.PerlinNoise(u * 8.5f + 5.5f, v * 8.5f + 3.2f) * 0.35f;
+                    float n3 = Mathf.PerlinNoise(u * 20f + 12f, v * 20f + 8f) * 0.15f;
                     float continentVal = n1 + n2 + n3;
 
                     // Swirling cyclone cloud streaks matching NASA Blue Marble photo
-                    float cloudN1 = Mathf.PerlinNoise(u * 7f + 10f, v * 7f + 5f);
-                    float cloudN2 = Mathf.PerlinNoise(u * 18f + 25f, v * 18f + 18f) * 0.45f;
+                    float cloudN1 = Mathf.PerlinNoise(u * 8f + 10f, v * 8f + 5f);
+                    float cloudN2 = Mathf.PerlinNoise(u * 22f + 25f, v * 22f + 18f) * 0.45f;
                     float cloudVal = cloudN1 + cloudN2;
 
                     Color pixelColor;
-                    if (continentVal > 0.50f)
+                    if (continentVal > 0.51f)
                     {
-                        float landElev = (continentVal - 0.50f) * 2.2f;
-                        Color saharaTerraCotta = new Color(0.82f, 0.54f, 0.36f); // Warm Sahara desert terra-cotta (Matching NASA photo)
-                        Color congoRainforest = new Color(0.16f, 0.38f, 0.22f);   // Deep Congo & Amazon rainforest green
-                        Color mountainSnow = new Color(0.92f, 0.94f, 0.98f);     // Mountain snow peaks
+                        float landElev = (continentVal - 0.51f) * 2.2f;
 
-                        // Northern land is desert/arid, equatorial land is lush rainforest
-                        Color landBase = isNorth ? Color.Lerp(congoRainforest, saharaTerraCotta, 0.70f) : congoRainforest;
-
-                        pixelColor = Color.Lerp(landBase, saharaTerraCotta, Mathf.Clamp01(landElev * 0.6f));
-                        if (landElev > 0.62f)
+                        // Smooth organic desert and forest biome blending
+                        float desertNoise = Mathf.PerlinNoise(u * 12f + 4f, v * 12f + 2f);
+                        Color landBase = Color.Lerp(temperateForestGreen, lushRainforestGreen, 1f - absLat);
+                        if (absLat < 0.45f && desertNoise > 0.52f)
                         {
-                            pixelColor = Color.Lerp(pixelColor, mountainSnow, (landElev - 0.62f) * 2.5f);
+                            landBase = Color.Lerp(landBase, saharaGoldenDesert, (desertNoise - 0.52f) * 2.2f);
+                        }
+
+                        pixelColor = landBase;
+                        if (landElev > 0.65f)
+                        {
+                            pixelColor = Color.Lerp(pixelColor, polarIceCap, (landElev - 0.65f) * 2.2f);
                         }
                     }
                     else
                     {
-                        // Deep royal abyssal ocean with vibrant coastal shelf (Matching NASA Blue Marble photo)
-                        float depth = (0.50f - continentVal) * 2.2f;
-                        Color shallowTurquoise = new Color(0.12f, 0.52f, 0.68f);
-                        Color deepAbyssalBlue = new Color(0.06f, 0.25f, 0.56f);
-                        pixelColor = Color.Lerp(shallowTurquoise, deepAbyssalBlue, Mathf.Clamp01(depth));
+                        // Deep royal abyssal ocean with turquoise coastal shelf (Matching NASA Blue Marble photo)
+                        float depth = (0.51f - continentVal) * 2.2f;
+                        pixelColor = Color.Lerp(shallowCoastalBlue, deepAbyssalOcean, Mathf.Clamp01(depth * 1.5f));
                     }
 
-                    // Natural North & South Polar Ice Caps
-                    if (latitude > 0.92f)
+                    // Natural North & South Polar Ice Caps (Antarctica & Arctic)
+                    if (absLat > 0.82f)
                     {
-                        Color polarCapColor = new Color(0.95f, 0.97f, 1.0f);
-                        pixelColor = Color.Lerp(pixelColor, polarCapColor, (latitude - 0.92f) * 12.0f);
+                        float polarFactor = Mathf.Clamp01((absLat - 0.82f) * 5.5f);
+                        pixelColor = Color.Lerp(pixelColor, polarIceCap, polarFactor);
                     }
 
                     // Swirling white cloud streaks (Matching NASA Blue Marble photo)
-                    if (cloudVal > 0.68f)
+                    if (cloudVal > 0.65f)
                     {
-                        float cloudAlpha = (cloudVal - 0.68f) * 2.2f;
-                        pixelColor = Color.Lerp(pixelColor, new Color(0.96f, 0.98f, 1.0f), Mathf.Clamp01(cloudAlpha * 0.65f));
+                        float cloudAlpha = (cloudVal - 0.65f) * 2.5f;
+                        pixelColor = Color.Lerp(pixelColor, atmosphericCloud, Mathf.Clamp01(cloudAlpha * 0.60f));
                     }
 
                     colors[y * width + x] = pixelColor;
@@ -306,7 +314,7 @@ namespace SolarSystemScope
             return tex;
         }
 
-        public static Texture2D CreateMoonTexture(int width = 2048, int height = 1024)
+        public static Texture2D CreateMoonTexture(int width = 4096, int height = 2048)
         {
             Texture2D tex = new Texture2D(width, height, TextureFormat.RGBA32, true);
             Color[] colors = new Color[width * height];
@@ -340,7 +348,7 @@ namespace SolarSystemScope
             return tex;
         }
 
-        public static Texture2D CreateMarsTexture(int width = 2048, int height = 1024)
+        public static Texture2D CreateMarsTexture(int width = 4096, int height = 2048)
         {
             Texture2D tex = new Texture2D(width, height, TextureFormat.RGBA32, true);
             Color[] colors = new Color[width * height];
@@ -409,7 +417,7 @@ namespace SolarSystemScope
             return tex;
         }
 
-        public static Texture2D CreateJupiterTexture(int width = 2048, int height = 1024)
+        public static Texture2D CreateJupiterTexture(int width = 4096, int height = 2048)
         {
             Texture2D tex = new Texture2D(width, height, TextureFormat.RGBA32, true);
             Color[] colors = new Color[width * height];
@@ -492,7 +500,7 @@ namespace SolarSystemScope
             return tex;
         }
 
-        public static Texture2D CreateSaturnTexture(int width = 2048, int height = 1024)
+        public static Texture2D CreateSaturnTexture(int width = 4096, int height = 2048)
         {
             Texture2D tex = new Texture2D(width, height, TextureFormat.RGBA32, true);
             Color[] colors = new Color[width * height];
@@ -526,32 +534,45 @@ namespace SolarSystemScope
             return tex;
         }
 
-        public static Texture2D CreateUranusTexture(int width = 2048, int height = 1024)
+        public static Texture2D CreateUranusTexture(int width = 4096, int height = 2048)
         {
             Texture2D tex = new Texture2D(width, height, TextureFormat.RGBA32, true);
             Color[] colors = new Color[width * height];
 
+            Color deepSpaceAzure = new Color(0.12f, 0.48f, 0.72f);    // Deep atmospheric limb
+            Color cyanAquamarine = new Color(0.24f, 0.82f, 0.92f);   // Core atmosphere
+            Color paleIceCyan = new Color(0.55f, 0.94f, 0.98f);       // Pale methane cloud bands
+            Color polarMethaneCap = new Color(0.85f, 0.97f, 1.0f);     // Bright polar cap (JWST/Voyager)
+
             for (int y = 0; y < height; y++)
             {
                 float v = (float)y / height;
+                float latitude = (v - 0.5f) * 2f; // [-1, 1]
+
                 for (int x = 0; x < width; x++)
                 {
                     float u = (float)x / width;
                     
-                    // Atmospheric wind bands and polar haze matching reference photo
-                    float n1 = Mathf.PerlinNoise(u * 4f, v * 12f) * 0.15f;
-                    float n2 = Mathf.PerlinNoise(u * 18f + 2f, v * 35f + 5f) * 0.08f;
+                    float n1 = Mathf.PerlinNoise(u * 6f, v * 16f) * 0.12f;
+                    float n2 = Mathf.PerlinNoise(u * 20f + 3f, v * 40f + 8f) * 0.06f;
                     float bandNoise = n1 + n2;
 
-                    Color deepAzureTeal = new Color(0.08f, 0.45f, 0.78f);   // Deep limb gradient
-                    Color brightAquamarine = new Color(0.20f, 0.88f, 0.95f); // Vibrant cyan aquamarine core
-                    Color iceCyanCloud = new Color(0.48f, 0.94f, 0.98f);     // Pale ice cyan cloud bands
+                    // Base atmospheric sphere gradient
+                    float baseGradient = Mathf.Cos(latitude * Mathf.PI * 0.5f);
+                    Color c = Color.Lerp(deepSpaceAzure, cyanAquamarine, baseGradient * 0.85f + bandNoise);
 
-                    float val = Mathf.Sin(v * Mathf.PI) * 0.85f + bandNoise;
-                    Color c = Color.Lerp(deepAzureTeal, brightAquamarine, val);
-                    if (val > 0.65f)
+                    // Subtle equatorial cloud bands
+                    if (Mathf.Abs(latitude) < 0.45f)
                     {
-                        c = Color.Lerp(c, iceCyanCloud, (val - 0.65f) * 2.0f);
+                        float bandStrength = Mathf.Sin(latitude * Mathf.PI * 8f) * 0.08f + 0.08f;
+                        c = Color.Lerp(c, paleIceCyan, bandStrength);
+                    }
+
+                    // Bright North Polar Methane Ice Cap (Matching NASA JWST / Voyager 2 photos)
+                    if (latitude > 0.45f)
+                    {
+                        float polarFactor = Mathf.Clamp01((latitude - 0.45f) * 2.2f);
+                        c = Color.Lerp(c, polarMethaneCap, polarFactor * 0.75f);
                     }
 
                     colors[y * width + x] = c;
@@ -609,22 +630,23 @@ namespace SolarSystemScope
                 for (int x = 0; x < size; x++)
                 {
                     float dist = Vector2.Distance(new Vector2(x, y), center) / maxRad;
-                    float angle = Mathf.Atan2(y - center.y, x - center.x);
-                    float ringNoise = Mathf.PerlinNoise(dist * 60f, angle * 4f) * 0.25f;
-
-                    // 100% Transparent empty space in center (dist < 0.45), full 360 ring band (dist in [0.45, 0.92])
                     float alpha = 0f;
-                    if (dist >= 0.45f && dist <= 0.92f)
-                    {
-                        float ringNorm = (dist - 0.45f) / 0.47f;
-                        alpha = Mathf.Sin(ringNorm * Mathf.PI) * (0.65f + ringNoise);
 
-                        // Concentric ring divisions matching NASA reference photo
-                        if (ringNorm > 0.35f && ringNorm < 0.42f) alpha *= 0.12f;
-                        if (ringNorm > 0.68f && ringNorm < 0.74f) alpha *= 0.15f;
+                    // Delicate, realistic fine concentric ring structure (Matching NASA Hubble/Voyager photo)
+                    if (dist >= 0.55f && dist <= 0.92f)
+                    {
+                        float ringNorm = (dist - 0.55f) / 0.37f;
+                        
+                        // Narrow distinct ring strands (Epsilon ring, Eta ring, etc.)
+                        float strand1 = Mathf.SmoothStep(0.02f, 0.0f, Mathf.Abs(ringNorm - 0.25f));
+                        float strand2 = Mathf.SmoothStep(0.015f, 0.0f, Mathf.Abs(ringNorm - 0.48f));
+                        float strand3 = Mathf.SmoothStep(0.025f, 0.0f, Mathf.Abs(ringNorm - 0.72f));
+                        float strand4 = Mathf.SmoothStep(0.035f, 0.0f, Mathf.Abs(ringNorm - 0.88f));
+
+                        alpha = Mathf.Clamp01((strand1 * 0.45f + strand2 * 0.35f + strand3 * 0.50f + strand4 * 0.65f));
                     }
 
-                    Color ringColor = new Color(0.75f, 0.92f, 0.98f, alpha); // Silvery cyan ring dust
+                    Color ringColor = new Color(0.70f, 0.92f, 0.98f, alpha); // Silvery cyan ring ice
                     colors[y * size + x] = ringColor;
                 }
             }
@@ -633,7 +655,7 @@ namespace SolarSystemScope
             return tex;
         }
 
-        public static Texture2D CreateNeptuneTexture(int width = 2048, int height = 1024)
+        public static Texture2D CreateNeptuneTexture(int width = 4096, int height = 2048)
         {
             Texture2D tex = new Texture2D(width, height, TextureFormat.RGBA32, true);
             Color[] colors = new Color[width * height];
@@ -648,8 +670,8 @@ namespace SolarSystemScope
                     float n2 = Mathf.PerlinNoise(u * 22f + 5f, v * 40f + 3f) * 0.12f;
                     float cloud = Mathf.PerlinNoise(u * 32f + 15f, v * 32f + 8f);
 
-                    Color deepCobaltAbyss = new Color(0.06f, 0.18f, 0.65f); // Deep abyss cobalt
-                    Color vibrantRoyalBlue = new Color(0.18f, 0.42f, 0.88f); // Vibrant royal blue
+                    Color deepCobaltAbyss = new Color(0.28f, 0.48f, 0.75f); // True-color pale azure abyss
+                    Color vibrantRoyalBlue = new Color(0.42f, 0.65f, 0.88f); // Soft azure blue
                     Color c = Color.Lerp(deepCobaltAbyss, vibrantRoyalBlue, n1 + n2 + v * 0.2f);
 
                     // Great Dark Spot Storm (Matching Voyager 2 photo)
@@ -674,6 +696,63 @@ namespace SolarSystemScope
                     colors[y * width + x] = c;
                 }
             }
+            tex.SetPixels(colors);
+            Apply4KQuality(tex);
+            return tex;
+        }
+
+        public static Texture2D CreatePlutoTexture(int width = 4096, int height = 2048)
+        {
+            Texture2D tex = new Texture2D(width, height, TextureFormat.RGBA32, true);
+            Color[] colors = new Color[width * height];
+
+            Color tholinDarkRed = new Color(0.32f, 0.12f, 0.08f);    // Cthulhu Macula dark tholin
+            Color tholinOchre = new Color(0.68f, 0.38f, 0.22f);      // Reddish-ochre terrain
+            Color nitrogenIceWhite = new Color(0.96f, 0.95f, 0.93f); // Tombaugh Regio heart glacier
+            Color nitrogenIceCream = new Color(0.88f, 0.82f, 0.74f); // Ice plains
+            Color polarIceCap = new Color(0.92f, 0.94f, 0.96f);      // Methane/nitrogen polar cap
+
+            for (int y = 0; y < height; y++)
+            {
+                float v = (float)y / height;
+                float latitude = Mathf.Abs(v - 0.5f) * 2f;
+
+                for (int x = 0; x < width; x++)
+                {
+                    float u = (float)x / width;
+
+                    float n1 = Mathf.PerlinNoise(u * 6f + 2f, v * 6f + 1f);
+                    float n2 = Mathf.PerlinNoise(u * 14f + 8f, v * 14f + 5f) * 0.35f;
+                    float n3 = Mathf.PerlinNoise(u * 30f + 12f, v * 30f + 7f) * 0.15f;
+                    float terrainNoise = n1 + n2 + n3;
+
+                    // Base tholin reddish-brown terrain gradient
+                    Color c = Color.Lerp(tholinDarkRed, tholinOchre, Mathf.Clamp01(terrainNoise));
+
+                    // Iconic Heart Glacier (Tombaugh Regio / Sputnik Planitia matching New Horizons photo)
+                    float heartDx = (u - 0.52f) * 3.2f;
+                    float heartDy = (v - 0.46f) * 3.2f;
+                    float hx = heartDx;
+                    float hy = heartDy + 0.12f;
+                    float heartFormula = Mathf.Pow(hx * hx + hy * hy - 0.08f, 3f) - hx * hx * Mathf.Pow(hy, 3f);
+
+                    if (heartFormula < 0.005f)
+                    {
+                        float heartFactor = Mathf.Clamp01(-heartFormula * 80f);
+                        Color heartCol = Color.Lerp(nitrogenIceCream, nitrogenIceWhite, heartFactor);
+                        c = Color.Lerp(c, heartCol, Mathf.Clamp01((0.005f - heartFormula) * 120f));
+                    }
+
+                    // Bright North & South Polar Ice Caps
+                    if (latitude > 0.85f)
+                    {
+                        c = Color.Lerp(c, polarIceCap, (latitude - 0.85f) * 6.5f);
+                    }
+
+                    colors[y * width + x] = c;
+                }
+            }
+
             tex.SetPixels(colors);
             Apply4KQuality(tex);
             return tex;

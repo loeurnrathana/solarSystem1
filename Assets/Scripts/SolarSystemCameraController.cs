@@ -23,29 +23,24 @@ namespace SolarSystemScope
         public float maxVerticalAngle = 88f;
 
         private float currentYaw = -15f;
-        private float currentPitch = 28f;
+        private float currentPitch = 25f;
+
         private Vector3 currentVelocity = Vector3.zero;
         private Vector3 panOffset = Vector3.zero;
+
+        private Vector2 mouseDownPosition;
+        private bool isMouseDown = false;
+
         private Camera cam;
-        private Texture2D handCursorTex;
-        private Transform cachedXRHand;
-        private float nextHandSearchTime = 0f;
         private CelestialBody nearbyBody = null;
         private GameObject proximityUIPrompt = null;
         private UnityEngine.UI.Text promptTextComponent = null;
 
-        private Vector2 mouseDownPosition = Vector2.zero;
-        private bool isMouseDown = false;
+        private Transform cachedXRHand = null;
+        private float nextHandSearchTime = 0f;
 
         private void Start()
         {
-            cam = GetComponent<Camera>();
-            if (cam != null)
-            {
-                cam.nearClipPlane = 0.1f;
-                cam.farClipPlane = 10000f;
-            }
-            currentPitch = 28f;
             currentYaw = -15f;
             distance = 140f;
             panOffset = Vector3.zero;
@@ -137,7 +132,7 @@ namespace SolarSystemScope
                 CelestialBody[] bodies = Object.FindObjectsByType<CelestialBody>(FindObjectsInactive.Exclude);
                 foreach (var body in bodies)
                 {
-                    if (body == null || body.bodyName == "Sun") continue;
+                    if (body == null || !IsSelectablePlanet(body) || body.bodyName == "Sun") continue;
                     if (body.orbitCenter != null && body.orbitCenter.name != "Sun") continue;
 
                     float dist = Vector3.Distance(camPos, body.transform.position);
@@ -293,28 +288,42 @@ namespace SolarSystemScope
             }
         }
 
+        private bool IsSelectablePlanet(CelestialBody body)
+        {
+            if (body == null) return false;
+            if (string.IsNullOrEmpty(body.bodyName)) return false;
+            string nameLower = body.bodyName.ToLower();
+            if (nameLower.Contains("asteroid") || nameLower.Contains("belt")) return false;
+            return true;
+        }
+
         public void SelectCelestialBody(CelestialBody body)
         {
-            if (body == null) return;
+            if (!IsSelectablePlanet(body) && (body == null || body.bodyName != "Sun")) return;
+
+            bool isSameTarget = (targetTarget == body.transform);
 
             targetTarget = body.transform;
             panOffset = Vector3.zero;
 
-            float worldScaleY = body.transform.lossyScale.y;
-            float viewDist = 18f;
-            if (body.bodyName == "Sun") viewDist = 80f;
-            else if (body.bodyName == "Jupiter" || body.bodyName == "Saturn") viewDist = 26f;
-            else if (body.bodyName == "Earth" || body.bodyName == "Mars" || body.bodyName == "Venus" || body.bodyName == "Mercury") viewDist = 16f;
-            else if (body.orbitCenter != null && body.orbitCenter.name != "Sun")
+            if (!isSameTarget)
             {
-                viewDist = Mathf.Max(worldScaleY * 3.0f, 4.5f);
-            }
-            else
-            {
-                viewDist = Mathf.Max(worldScaleY * 2.2f, 15f);
-            }
+                float worldScaleY = body.transform.lossyScale.y;
+                float viewDist = 18f;
+                if (body.bodyName == "Sun") viewDist = 100f;
+                else if (body.bodyName == "Jupiter" || body.bodyName == "Saturn") viewDist = 26f;
+                else if (body.bodyName == "Earth" || body.bodyName == "Mars" || body.bodyName == "Venus" || body.bodyName == "Mercury") viewDist = 16f;
+                else if (body.orbitCenter != null && body.orbitCenter.name != "Sun")
+                {
+                    viewDist = Mathf.Max(worldScaleY * 3.0f, 4.5f);
+                }
+                else
+                {
+                    viewDist = Mathf.Max(worldScaleY * 2.2f, 15f);
+                }
 
-            distance = viewDist;
+                distance = viewDist;
+            }
 
             if (PlanetLabelManager.Instance != null)
             {
@@ -330,9 +339,13 @@ namespace SolarSystemScope
             GameObject sunObj = GameObject.Find("Sun");
             if (sunObj != null) sunTransform = sunObj.transform;
 
-            if (sunTransform != null)
+            if (sunTransform != null && targetTarget != null)
             {
-                SetTarget(sunTransform, 320f);
+                // Lock current camera focal point in space without changing distance or zooming to Sun!
+                Vector3 currentFocalPoint = targetTarget.position + panOffset;
+                targetTarget = sunTransform;
+                panOffset = currentFocalPoint - sunTransform.position;
+                // Keep current distance unchanged!
             }
 
             if (PlanetLabelManager.Instance != null)
@@ -362,36 +375,41 @@ namespace SolarSystemScope
 
             Ray ray = cam.ScreenPointToRay(mousePos);
 
-            // 1. Direct Raycast against 3D planet sphere colliders
+            // 1. Direct 3D Raycast against all celestial body sphere colliders
             RaycastHit[] hits = Physics.RaycastAll(ray, 5000f);
-            float closestHitDist = float.MaxValue;
-            CelestialBody directHitBody = null;
+            CelestialBody hitNonSunBody = null;
+            CelestialBody hitSunBody = null;
+            float minNonSunDist = float.MaxValue;
 
             foreach (var hit in hits)
             {
                 CelestialBody body = hit.collider.GetComponentInParent<CelestialBody>();
-                if (body != null && hit.distance < closestHitDist)
+                if (body != null && IsSelectablePlanet(body))
                 {
-                    closestHitDist = hit.distance;
-                    directHitBody = body;
+                    if (body.bodyName == "Sun")
+                    {
+                        hitSunBody = body;
+                    }
+                    else if (hit.distance < minNonSunDist)
+                    {
+                        minNonSunDist = hit.distance;
+                        hitNonSunBody = body;
+                    }
                 }
             }
 
-            if (directHitBody != null)
-            {
-                SelectCelestialBody(directHitBody);
-                return;
-            }
-
-            // 2. Accurate Screen-Space Proximity Detection (For clicking 3D text labels or near planet spheres)
+            // 2. Accurate Screen-Space Proximity Detection (For clicking floating text labels or near planet spheres)
             CelestialBody[] allBodies = Object.FindObjectsByType<CelestialBody>(FindObjectsInactive.Exclude);
-            CelestialBody bestScreenBody = null;
-            float minScreenDistance = float.MaxValue;
+            CelestialBody bestScreenNonSunBody = null;
+            float minScreenNonSunDist = float.MaxValue;
             float maxClickPixelRadius = 85f; // Max pixel distance on screen allowed for selection click
+
+            CelestialBody bestScreenSunBody = null;
+            float minScreenSunDist = float.MaxValue;
 
             foreach (var body in allBodies)
             {
-                if (body == null) continue;
+                if (body == null || !IsSelectablePlanet(body)) continue;
 
                 Vector3 bodyWorldPos = body.transform.position;
                 float baseRadius = body.transform.lossyScale.y * 0.5f;
@@ -408,17 +426,44 @@ namespace SolarSystemScope
 
                     float bestDistPx = Mathf.Min(distPlanetPx, distLabelPx);
 
-                    if (bestDistPx <= maxClickPixelRadius && bestDistPx < minScreenDistance)
+                    if (body.bodyName == "Sun")
                     {
-                        minScreenDistance = bestDistPx;
-                        bestScreenBody = body;
+                        if (bestDistPx <= 30f && bestDistPx < minScreenSunDist)
+                        {
+                            minScreenSunDist = bestDistPx;
+                            bestScreenSunBody = body;
+                        }
+                    }
+                    else
+                    {
+                        if (bestDistPx <= maxClickPixelRadius && bestDistPx < minScreenNonSunDist)
+                        {
+                            minScreenNonSunDist = bestDistPx;
+                            bestScreenNonSunBody = body;
+                        }
                     }
                 }
             }
 
-            if (bestScreenBody != null)
+            // Priority 1: Direct 3D Raycast hit on a non-Sun planet
+            if (hitNonSunBody != null)
             {
-                SelectCelestialBody(bestScreenBody);
+                SelectCelestialBody(hitNonSunBody);
+                return;
+            }
+
+            // Priority 2: Screen-space proximity to a non-Sun planet or its label
+            if (bestScreenNonSunBody != null)
+            {
+                SelectCelestialBody(bestScreenNonSunBody);
+                return;
+            }
+
+            // Priority 3: Direct hit or screen proximity to Sun (ONLY if no non-Sun planet was targeted)
+            CelestialBody sunToSelect = (hitSunBody != null) ? hitSunBody : bestScreenSunBody;
+            if (sunToSelect != null)
+            {
+                SelectCelestialBody(sunToSelect);
             }
         }
 
@@ -437,13 +482,32 @@ namespace SolarSystemScope
             if (handTransform == null && cam == null) return;
 
             Ray ray = (handTransform != null) ? new Ray(handTransform.position, handTransform.forward) : cam.ViewportPointToRay(new Vector3(0.5f, 0.5f, 0f));
-            if (Physics.Raycast(ray, out RaycastHit hit, 5000f))
+            RaycastHit[] hits = Physics.RaycastAll(ray, 5000f);
+            CelestialBody hitNonSunBody = null;
+            CelestialBody hitSunBody = null;
+            float minNonSunDist = float.MaxValue;
+
+            foreach (var hit in hits)
             {
                 CelestialBody body = hit.collider.GetComponentInParent<CelestialBody>();
-                if (body != null && (WasMouseDownThisFrame() || WasXRTriggerPressedThisFrame()))
+                if (body != null && IsSelectablePlanet(body))
                 {
-                    SelectCelestialBody(body);
+                    if (body.bodyName == "Sun")
+                    {
+                        hitSunBody = body;
+                    }
+                    else if (hit.distance < minNonSunDist)
+                    {
+                        minNonSunDist = hit.distance;
+                        hitNonSunBody = body;
+                    }
                 }
+            }
+
+            CelestialBody targetBody = (hitNonSunBody != null) ? hitNonSunBody : hitSunBody;
+            if (targetBody != null && (WasMouseDownThisFrame() || WasXRTriggerPressedThisFrame()))
+            {
+                SelectCelestialBody(targetBody);
             }
         }
 

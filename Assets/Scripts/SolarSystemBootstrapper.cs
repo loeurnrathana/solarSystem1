@@ -65,9 +65,11 @@ namespace SolarSystemScope
             }
 #pragma warning restore 0618
 
-            // Clean up legacy grid root if present
+            // Clean up legacy grid & constellation roots if present
             GameObject oldGrid = GameObject.Find("EclipticGridRoot");
             if (oldGrid != null) SafeDestroy(oldGrid);
+            GameObject oldConst = GameObject.Find("ConstellationMapRoot");
+            if (oldConst != null) SafeDestroy(oldConst);
 
             // Remove legacy scripts from scene objects & fix EventSystem
 #pragma warning disable 0618
@@ -77,6 +79,12 @@ namespace SolarSystemScope
 #pragma warning restore 0618
 
             FixEventSystem();
+
+            // Set Ultra AAA Graphics Quality Settings
+            QualitySettings.anisotropicFiltering = AnisotropicFiltering.Enable;
+            QualitySettings.antiAliasing = 8;
+            QualitySettings.shadowResolution = ShadowResolution.VeryHigh;
+            QualitySettings.globalTextureMipmapLimit = 0; // Crisp full-resolution textures
 
             Debug.Log("<color=cyan>[Solar System Scope] Generating 3D Solar System...</color>");
 
@@ -92,7 +100,7 @@ namespace SolarSystemScope
             sunObj.transform.localScale = Vector3.one * 34f;
 
             Renderer sunRenderer = sunObj.GetComponent<Renderer>();
-            Material sunMat = new Material(GetPlanetShader());
+            Material sunMat = new Material(GetPlanetShader(true));
             ApplyTextureToMaterial(sunMat, ProceduralPlanetTextures.CreateSunTexture());
             if (sunMat.HasProperty("_EmissionColor"))
             {
@@ -133,7 +141,7 @@ namespace SolarSystemScope
             CreatePlanetData(root.transform, sunObj.transform, bodies, "Mercury", 2.4f, 42f, 15f, 6.1f, 0.03f, 2440f, 0.39f, "88 Earth Days", "0 (Zero moons)", "-180°C to 430°C", 
                 "Orbits the Sun once every 88 Earth days. It spins very slowly on its axis once every 59 Earth days. Mercury has zero moons, so there is no lunar motion.", ProceduralPlanetTextures.CreateMercuryTexture(), 0.02f, 0f, cyanOrbitColor, 3.70f, initialAngleDegrees: 83f);
 
-            CreatePlanetData(root.transform, sunObj.transform, bodies, "Venus", 4.2f, 58f, 11f, -1.48f, 177.3f, 6051f, 0.72f, "225 Earth Days", "0 (Zero moons)", "465°C", 
+            GameObject venusObj = CreatePlanetData(root.transform, sunObj.transform, bodies, "Venus", 4.2f, 58f, 11f, -1.48f, 177.3f, 6051f, 0.72f, "225 Earth Days", "0 (Zero moons)", "465°C", 
                 "Orbits the Sun once every 225 Earth days. It spins backwards (retrograde rotation) very slowly, taking 243 Earth days for one rotation. Venus has zero moons.", ProceduralPlanetTextures.CreateVenusTexture(), 0.01f, 0f, cyanOrbitColor, 8.87f, initialAngleDegrees: 10f);
 
             GameObject earthObj = CreatePlanetData(root.transform, sunObj.transform, bodies, "Earth", 4.8f, 76f, 8f, 15f, 23.4f, 6371f, 1.0f, "365.25 Earth Days", "1 (Moon)", "15°C", 
@@ -223,12 +231,11 @@ namespace SolarSystemScope
 
             // Pluto (Dwarf Planet)
             GameObject plutoObj = CreatePlanetData(root.transform, sunObj.transform, bodies, "Pluto", 1.4f, 310f, 0.8f, 3.8f, 57.5f, 1188f, 39.48f, "248 Earth Years", "5 Moons", "-230°C",
-                "Pluto is a dwarf planet in the Kuiper belt, a ring of bodies beyond Neptune. It has an eccentric and inclined orbit.", ProceduralPlanetTextures.CreateMoonTexture(), 0.15f, 17f, cyanOrbitColor, 0.62f, initialAngleDegrees: 135f);
+                "Pluto is a dwarf planet in the Kuiper belt, a ring of bodies beyond Neptune. It has an eccentric and inclined orbit.", ProceduralPlanetTextures.CreatePlutoTexture(), 0.15f, 17f, cyanOrbitColor, 0.62f, initialAngleDegrees: 135f);
 
-            // 3. SETUP ASTEROID BELT, ECLIPTIC GRID & CONSTELLATIONS
+            // 3. SETUP ASTEROID BELT & SOLAR SYSTEM SCOPE TEXTURES
             root.AddComponent<AsteroidBelt>();
-            root.AddComponent<EclipticGrid>();
-            root.AddComponent<ConstellationMap>();
+            root.AddComponent<SolarSystemScopeTextureLoader>();
 
             // Clean up any old Comet or extra LabelManager instances
 #pragma warning disable 0618
@@ -456,19 +463,58 @@ namespace SolarSystemScope
             }
         }
 
+        private static GameObject CreateFlatRingDiscMesh(string name, Transform parent, Vector3 localScale, Vector3 localRotation)
+        {
+            GameObject ringObj = new GameObject(name);
+            ringObj.transform.SetParent(parent, false);
+            ringObj.transform.localRotation = Quaternion.Euler(localRotation);
+            ringObj.transform.localScale = localScale;
+
+            MeshFilter mf = ringObj.AddComponent<MeshFilter>();
+            MeshRenderer mr = ringObj.AddComponent<MeshRenderer>();
+
+            Mesh mesh = new Mesh();
+            mesh.name = name + "Mesh";
+
+            Vector3[] vertices = new Vector3[]
+            {
+                new Vector3(-1f, 0f, -1f),
+                new Vector3( 1f, 0f, -1f),
+                new Vector3( 1f, 0f,  1f),
+                new Vector3(-1f, 0f,  1f)
+            };
+
+            Vector2[] uvs = new Vector2[]
+            {
+                new Vector2(0f, 0f),
+                new Vector2(1f, 0f),
+                new Vector2(1f, 1f),
+                new Vector2(0f, 1f)
+            };
+
+            int[] triangles = new int[]
+            {
+                0, 2, 1,
+                0, 3, 2,
+                1, 2, 0,
+                2, 3, 0
+            };
+
+            mesh.vertices = vertices;
+            mesh.uv = uvs;
+            mesh.triangles = triangles;
+            mesh.RecalculateNormals();
+            mesh.RecalculateBounds();
+
+            mf.sharedMesh = mesh;
+            return ringObj;
+        }
+
         private static void CreateSaturnRings(GameObject saturn)
         {
-            GameObject ringsObj = new GameObject("SaturnRings");
-            ringsObj.transform.SetParent(saturn.transform, false);
-            ringsObj.transform.localScale = new Vector3(2.4f, 0.01f, 2.4f);
-
-            GameObject ringDisc = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            ringDisc.transform.SetParent(ringsObj.transform, false);
-            ringDisc.transform.localScale = new Vector3(1f, 0.001f, 1f);
-            SafeDestroy(ringDisc.GetComponent<Collider>());
-
+            GameObject ringDisc = CreateFlatRingDiscMesh("SaturnRingDisc", saturn.transform, new Vector3(2.4f, 1f, 2.4f), Vector3.zero);
             Renderer ringRenderer = ringDisc.GetComponent<Renderer>();
-            Shader unlitShader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Texture") ?? Shader.Find("Sprites/Default");
+            Shader unlitShader = Shader.Find("Unlit/Transparent") ?? Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Sprites/Default");
             Material ringMat = new Material(unlitShader);
             ApplyTextureToMaterial(ringMat, ProceduralPlanetTextures.CreateSaturnRingsTexture());
             ConfigureRingMaterial(ringMat);
@@ -477,18 +523,9 @@ namespace SolarSystemScope
 
         private static void CreateUranusRings(GameObject uranus)
         {
-            GameObject ringsObj = new GameObject("UranusRings");
-            ringsObj.transform.SetParent(uranus.transform, false);
-            ringsObj.transform.localRotation = Quaternion.Euler(82f, 0f, 15f); // Tilted 82 degrees vertically (Matching reference photo)
-            ringsObj.transform.localScale = new Vector3(2.2f, 0.01f, 2.2f);
-
-            GameObject ringDisc = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-            ringDisc.transform.SetParent(ringsObj.transform, false);
-            ringDisc.transform.localScale = new Vector3(1f, 0.001f, 1f);
-            SafeDestroy(ringDisc.GetComponent<Collider>());
-
+            GameObject ringDisc = CreateFlatRingDiscMesh("UranusRingDisc", uranus.transform, new Vector3(2.2f, 1f, 2.2f), new Vector3(82f, 0f, 15f));
             Renderer ringRenderer = ringDisc.GetComponent<Renderer>();
-            Shader unlitShader = Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Unlit/Texture") ?? Shader.Find("Sprites/Default");
+            Shader unlitShader = Shader.Find("Unlit/Transparent") ?? Shader.Find("Universal Render Pipeline/Unlit") ?? Shader.Find("Sprites/Default");
             Material ringMat = new Material(unlitShader);
             ApplyTextureToMaterial(ringMat, ProceduralPlanetTextures.CreateUranusRingsTexture());
             ConfigureRingMaterial(ringMat);
@@ -541,14 +578,71 @@ namespace SolarSystemScope
             trail.trailColor = new Color(0.55f, 0.35f, 0.95f, 0.85f);
         }
 
-        private static Shader GetPlanetShader()
+        private static void CreateAtmosphereShell(GameObject planet, string planetName, Color glowColor, float scaleMultiplier = 1.05f)
         {
-            Shader s = Shader.Find("Universal Render Pipeline/Unlit");
-            if (s == null) s = Shader.Find("Unlit/Texture");
-            if (s == null) s = Shader.Find("Universal Render Pipeline/Lit");
-            if (s == null) s = Shader.Find("Standard");
-            if (s == null) s = Shader.Find("Sprites/Default");
-            return s;
+            if (planet == null) return;
+            GameObject atmosObj = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            atmosObj.name = planetName + "_AtmosphereGlow";
+            atmosObj.transform.SetParent(planet.transform, false);
+            atmosObj.transform.localScale = Vector3.one * scaleMultiplier;
+
+            SafeDestroy(atmosObj.GetComponent<Collider>());
+
+            Renderer r = atmosObj.GetComponent<Renderer>();
+            Shader atmosShader = Shader.Find("SolarSystem/AtmosphericScattering") ?? Shader.Find("SolarSystem/AtmosphereRim") ?? Shader.Find("Unlit/Transparent") ?? Shader.Find("Legacy Shaders/Transparent/Diffuse");
+            Material mat = new Material(atmosShader);
+            ConfigureTransparentMaterial(mat, glowColor);
+
+            // Configure planet-specific Rayleigh scattering parameters
+            Vector4 rayleigh = new Vector4(0.15f, 0.45f, 1.0f, 1.0f); // Default Earth blue scattering
+            float falloff = 3.5f;
+            float intensity = 2.5f;
+
+            if (planetName.Contains("Mars"))
+            {
+                glowColor = new Color(0.95f, 0.45f, 0.25f, 1.0f); // Red/Orange dust scattering
+                rayleigh = new Vector4(1.0f, 0.4f, 0.15f, 1.0f);
+                falloff = 4.5f;
+                intensity = 2.0f;
+            }
+            else if (planetName.Contains("Venus"))
+            {
+                glowColor = new Color(0.95f, 0.85f, 0.45f, 1.0f); // Dense golden clouds
+                rayleigh = new Vector4(0.95f, 0.8f, 0.35f, 1.0f);
+                falloff = 2.5f;
+                intensity = 3.0f;
+            }
+            else if (planetName.Contains("Uranus") || planetName.Contains("Neptune"))
+            {
+                glowColor = new Color(0.2f, 0.75f, 0.95f, 1.0f); // Cyan & methane azure
+                rayleigh = new Vector4(0.1f, 0.7f, 1.0f, 1.0f);
+                falloff = 3.0f;
+                intensity = 2.8f;
+            }
+
+            mat.SetColor("_AtmosphereColor", glowColor);
+            mat.SetVector("_RayleighCoeff", rayleigh);
+            mat.SetFloat("_DensityFalloff", falloff);
+            mat.SetFloat("_GlowIntensity", intensity);
+
+            r.material = mat;
+
+            AtmosphereController ctrl = atmosObj.AddComponent<AtmosphereController>();
+            ctrl.atmosphereColor = glowColor;
+            ctrl.rayleighCoefficients = rayleigh;
+            ctrl.densityFalloff = falloff;
+            ctrl.glowIntensity = intensity;
+        }
+
+        private static Shader GetPlanetShader(bool isSun = false)
+        {
+            Shader shader = Shader.Find("Unlit/Texture") 
+                ?? Shader.Find("Universal Render Pipeline/Unlit") 
+                ?? Shader.Find("Standard") 
+                ?? Shader.Find("Universal Render Pipeline/Lit") 
+                ?? Shader.Find("Legacy Shaders/Diffuse") 
+                ?? Shader.Find("Mobile/Unlit (Supports Lightmap)");
+            return shader;
         }
 
         private static void ApplyTextureToMaterial(Material mat, Texture2D tex)
@@ -573,7 +667,7 @@ namespace SolarSystemScope
             if (mat.HasProperty("_Surface")) mat.SetFloat("_Surface", 1);
             if (mat.HasProperty("_Blend")) mat.SetFloat("_Blend", 1);
             mat.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
-            mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.One);
+            mat.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
             mat.SetInt("_ZWrite", 0);
             mat.DisableKeyword("_ALPHATEST_ON");
             mat.EnableKeyword("_ALPHABLEND_ON");
